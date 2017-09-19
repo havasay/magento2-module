@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+     <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xsi:noNamespaceSchemaLocation="../../Core/etc/config.xsd">
+        <default>
+            <havasay>
+                <settings>
+                    <tabwidget_enabled>1</tabwidget_enabled>
+                    <aggregatewidget_enabled>1</aggregatewidget_enabled>
+                    <sharewidget_enabled>1</sharewidget_enabled>
+                </settings>
+            </havasay>
+        </default>
+    </config>

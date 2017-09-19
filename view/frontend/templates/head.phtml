@@ -1,0 +1,165 @@
+<script type="text/javascript">
+	//console.log('before is Product page');
+	if ("<?php echo $this->_manager->isEnabled('Havasay_Havasay')?>"==="1" && "<?php echo $this->isProductPage(); ?>"==="1") {
+		console.log("check next log")
+		console.log("<?php echo $this->getStoreName(); ?>");
+		console.log("<?php echo $this->getStoreUrl(); ?>");
+		console.log("<?php echo $this->getWebsiteId(); ?>");
+		console.log("<?php echo $this->getStoreCode(); ?>");
+		console.log("<?php echo $this->getStoreEmail(); ?>");
+		console.log("<?php echo $this->getStoreId(); ?>");
+		console.log("<?php echo $this->getBaseUrl(); ?>");
+
+		(function (window, document) {			
+			var orgId;
+			var channelId;
+			var orgSecret;
+			var orgName = "<?php echo $this->getStoreName(); ?>";
+			var storeId = "<?php echo $this->getStoreId(); ?>";
+			var orgKey;
+			/* encoding the productName, SKU Code and Categories List so that they dont contain double quotes and making it as a standard JSON object to avoid issues on rendering */
+			var productName = "<?php if ($currentProduct = $this->getCurrentProduct()) {
+				$productName = $currentProduct->getName();
+				echo htmlspecialchars($productName, ENT_COMPAT);
+			} ?>";
+			var skuCode = "<?php if ($currentProduct = $this->getCurrentProduct()) {  
+				$skuCode = $currentProduct->getSku(); 
+				echo htmlspecialchars($skuCode, ENT_COMPAT);
+			} ?>";
+			var categoriesList = JSON.stringify(<?php $categoriesList = JSON_encode($this->getProductCategories());
+				echo $categoriesList;
+			 ?>);
+			var baseUrl = "<?php echo $this->getBaseUrl(); ?>";
+			var havasayCorePath = "https://havasay01.appspot.com";
+			var havasayWidgetPath = "https://wc-dot-havasay01.appspot.com";
+
+									
+			var havasayInjector = function () {
+				
+				var xmlhttp = new XMLHttpRequest();
+				var xmlhttp1 = new XMLHttpRequest();
+				var xmlhttp2 = new XMLHttpRequest();
+
+				xmlhttp.onreadystatechange = function() {
+					if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
+					   if (xmlhttp.status == 200) {
+						   var result = xmlhttp.responseText;
+						   //console.log('result:'+result);
+						   var parsedResult = JSON.parse(result);
+						   orgKey = parsedResult.response.entity.orgKey;
+						   orgId = parsedResult.response.entity.organizationId;;
+						   channelId = parsedResult.response.entity.channelId;
+						   orgSecret = parsedResult.response.entity.organization_secret;
+						   
+						   xmlhttp1.open("POST", baseUrl+"havasay/index/organizationcontroller", true);
+						   var parameters1 = '{"storeId":"'+"<?php echo $this->getStoreId(); ?>"+'","havasayPath":"'+havasayCorePath+'","orgKey":"'+orgKey+'","orgId":"'+orgId+'","channelId":"'+channelId+'","orgSecret":"'+orgSecret+'","orgName":"'+"<?php echo $this->getStoreName(); ?>"+'","listName":"'+orgName+'"}'; 
+						   xmlhttp1.send(parameters1);	
+						   
+						   setTimeout(function(){ hsCallBack(); }, 5000);
+						   
+					   }
+					   else if (xmlhttp.status == 400) {
+						  console.log('There was an error 400');
+					   }
+					   else {
+						   console.log('something else other than 200 was returned');
+					   }
+					}
+				};
+
+				xmlhttp1.onreadystatechange = function() {
+					if (xmlhttp1.readyState == XMLHttpRequest.DONE ) {
+					   if (xmlhttp1.status == 200) {
+						   var result = xmlhttp1.responseText;
+						   //console.log('result1:'+result);
+						   //var parsedResult = JSON.parse(result);
+
+					   }
+					   else if (xmlhttp1.status == 400) {
+						  console.log('There was an error 400');
+					   }
+					   else {
+						   console.log('something else other than 200 was returned');
+					   }
+					}
+				};
+
+				xmlhttp2.onreadystatechange = function() {
+					if (xmlhttp2.readyState == XMLHttpRequest.DONE ) {
+					   if (xmlhttp2.status == 200) {
+						   var result = xmlhttp2.responseText;
+						   //console.log('result1:'+result);
+						   var parsedResult = JSON.parse(result);
+						   //console.log(parsedResult.success);
+						   if(!parsedResult.success){
+							   xmlhttp.open("POST", havasayCorePath+"/extension/register", true);
+							   var parameters = '{"org_name":"'+"<?php echo $this->getStoreName(); ?>"+'", "user_email":"'+"<?php echo $this->getStoreEmail(); ?>"+'", "channel_name":"'+window.location.host+'"}';
+							   xmlhttp.send(parameters);
+						   } else{
+							   orgKey = parsedResult.success.org_key;
+							   orgId = parsedResult.success.org_id;;
+							   channelId = parsedResult.success.channel_id;
+							   orgSecret = parsedResult.success.org_secret;
+							   hsCallBack();
+						   }
+
+					   }
+					   else if (xmlhttp2.status == 400) {
+						  console.log('There was an error 400');
+					   }
+					   else {
+						   console.log('something else other than 200 was returned');
+					   }
+					}
+				};
+
+				xmlhttp2.open("POST", baseUrl+"havasay/index/getorganizationcontroller", true);
+				var parameters2 = '{"storeId":"'+"<?php echo $this->getStoreId(); ?>"+'"}'; 
+				xmlhttp2.send(parameters2);				
+			};
+			var hsCallBack = function() {
+				var head = document.querySelector('head');
+				var script = document.createElement('script');
+				script.setAttribute('id', 'havasayInjector');
+				script.setAttribute('type', 'text/javascript');
+				var scriptContent = "window.HSCallback = function() {" + 
+					"return {" + 
+						'"organizationId": "' + orgId + '",' +
+						'"channelId": "' + channelId + '",' +
+						'"breadcrumb": "null",' +
+						'"orgsecret": "' + orgSecret + '",' +
+						'"itemCode": "' + skuCode + '",' +
+						'"productName": "' + productName + '",' +
+						'"categories": ' + categoriesList + ',' + 
+					"};" +
+				"};" + 
+				"var orgKey = '"+orgKey+"';";
+				script.appendChild(document.createTextNode(scriptContent));
+				head.appendChild(script);
+				
+				/*To inject hswidget.js*/
+				addHavasayWidget();
+				fixDropdown();
+			};
+			var addHavasayWidget = function () {
+				var script = document.createElement("script"), 
+				tag = document.getElementsByTagName("script")[0];
+				script.src = havasayWidgetPath+"/designs/js/hswidget.js";
+				tag.parentNode.insertBefore(script, tag);
+			};
+			var fixDropdown = function () {
+				var count = 0;
+				var Interval = setInterval(function(){
+					$jq_191("[data-toggle=dropdown]").dropdown();
+					count +=2;
+					if (count >= 20) {
+						window.clearInterval(Interval);
+					}
+				}, 2000);
+			}
+			
+			
+			window.addEventListener ? window.addEventListener('load', havasayInjector, false) : window.attachEvent('onload', havasayInjector);
+		})(window, document);			
+	}
+</script>
